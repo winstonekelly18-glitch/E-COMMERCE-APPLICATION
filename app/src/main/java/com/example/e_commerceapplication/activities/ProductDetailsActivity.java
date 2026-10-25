@@ -1,5 +1,6 @@
 package com.example.e_commerceapplication.activities;
 
+import android.content.Intent;
 import android.os.Bundle;
 import android.widget.ImageButton;
 import android.widget.ImageView;
@@ -13,6 +14,7 @@ import androidx.recyclerview.widget.RecyclerView;
 
 import com.bumptech.glide.Glide;
 import com.example.e_commerceapplication.R;
+import com.example.e_commerceapplication.adapters.ProductAdapter;
 import com.example.e_commerceapplication.adapters.ReviewAdapter;
 import com.example.e_commerceapplication.database.LocalCartItem;
 import com.example.e_commerceapplication.models.Product;
@@ -23,18 +25,20 @@ import com.example.e_commerceapplication.viewmodels.ProductViewModel;
 import com.google.android.material.button.MaterialButton;
 import com.google.firebase.auth.FirebaseUser;
 
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Locale;
 
 /**
- * Displays full product information, quantity selection, stock status, reviews, and wishlist toggle.
+ * Displays full product information, quantity selection, stock status, reviews, wishlist toggle, and related products.
  */
-public class ProductDetailsActivity extends AppCompatActivity {
+public class ProductDetailsActivity extends AppCompatActivity implements ProductAdapter.OnProductClickListener {
 
     private ImageView ivDetailProductImage;
     private ImageButton btnWishlistToggle, btnQtyDecrease, btnQtyIncrease;
     private TextView tvDetailProductName, tvDetailProductPrice, tvStockStatus, tvDetailProductCategory, tvDetailDescription, tvDetailQuantity;
     private MaterialButton btnAddToCartDetail;
-    private RecyclerView rvReviews;
+    private RecyclerView rvReviews, rvRelatedProducts;
 
     private Product product;
     private int selectedQuantity = 1;
@@ -44,6 +48,7 @@ public class ProductDetailsActivity extends AppCompatActivity {
     private CartViewModel cartViewModel;
     private AuthViewModel authViewModel;
     private ReviewAdapter reviewAdapter;
+    private ProductAdapter relatedProductAdapter;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -65,6 +70,7 @@ public class ProductDetailsActivity extends AppCompatActivity {
         bindProductData();
         setupListeners();
         loadReviews();
+        loadRelatedProducts();
     }
 
     private void initViews() {
@@ -82,10 +88,15 @@ public class ProductDetailsActivity extends AppCompatActivity {
 
         btnAddToCartDetail = findViewById(R.id.btnAddToCartDetail);
         rvReviews = findViewById(R.id.rvReviews);
+        rvRelatedProducts = findViewById(R.id.rvRelatedProducts);
 
         reviewAdapter = new ReviewAdapter(this);
         rvReviews.setLayoutManager(new LinearLayoutManager(this));
         rvReviews.setAdapter(reviewAdapter);
+
+        relatedProductAdapter = new ProductAdapter(this, this);
+        rvRelatedProducts.setLayoutManager(new LinearLayoutManager(this, LinearLayoutManager.HORIZONTAL, false));
+        rvRelatedProducts.setAdapter(relatedProductAdapter);
     }
 
     private void bindProductData() {
@@ -163,5 +174,45 @@ public class ProductDetailsActivity extends AppCompatActivity {
                 reviewAdapter.setReviews(resource.data);
             }
         });
+    }
+
+    private void loadRelatedProducts() {
+        productViewModel.getProductsByCategory(product.getCategory()).observe(this, resource -> {
+            if (resource.status == Resource.Status.SUCCESS && resource.data != null) {
+                List<Product> related = new ArrayList<>();
+                for (Product p : resource.data) {
+                    if (!p.getProductId().equals(product.getProductId())) {
+                        related.add(p);
+                    }
+                }
+                relatedProductAdapter.setProducts(related);
+            }
+        });
+    }
+
+    @Override
+    public void onProductClick(Product p) {
+        Intent intent = new Intent(ProductDetailsActivity.this, ProductDetailsActivity.class);
+        intent.putExtra("product", p);
+        startActivity(intent);
+        finish();
+    }
+
+    @Override
+    public void onAddToCartClick(Product p) {
+        if (p.getStockQuantity() <= 0) {
+            Toast.makeText(this, "Item is out of stock!", Toast.LENGTH_SHORT).show();
+            return;
+        }
+        LocalCartItem cartItem = new LocalCartItem(
+                p.getProductId(),
+                p.getName(),
+                p.getPrice(),
+                1,
+                p.getImageUrl(),
+                p.getStockQuantity()
+        );
+        cartViewModel.addToCart(cartItem);
+        Toast.makeText(this, p.getName() + " added to cart!", Toast.LENGTH_SHORT).show();
     }
 }

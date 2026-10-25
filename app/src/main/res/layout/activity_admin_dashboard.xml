@@ -197,6 +197,16 @@
             android:text="Manage Customer Orders"
             android:textSize="16sp" />
 
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/btnExportSalesReport"
+            style="@style/Widget.Material3.Button.TonalButton"
+            android:layout_width="match_parent"
+            android:layout_height="56dp"
+            android:layout_marginTop="12dp"
+            android:text="Export Sales CSV Report"
+            app:icon="@android:drawable/ic_menu_save"
+            android:textSize="16sp" />
+
     </LinearLayout>
 
 </ScrollView>
