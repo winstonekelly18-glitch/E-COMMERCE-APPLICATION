@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">ShopMpesa</string>
+    <string name="welcome_back">Karibu Tena</string>
+    <string name="sign_in">Ingia</string>
+    <string name="register">Sajili Account</string>
+    <string name="cart">Kikapu</string>
+    <string name="my_orders">Orodha ya Oda</string>
+    <string name="profile">Profaili</string>
+    <string name="pay_with_mpesa">Lipa na M-Pesa</string>
+    <string name="out_of_stock">BIDHAA IMESHAPITA</string>
+    <string name="search_hint">Tafuta bidhaa au kategoria…</string>
+</resources>
