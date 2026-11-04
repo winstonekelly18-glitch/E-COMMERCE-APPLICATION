@@ -21,12 +21,12 @@ import com.google.android.material.textfield.TextInputLayout;
 import com.google.firebase.auth.FirebaseUser;
 
 /**
- * ProfileActivity displays and allows editing of user details (Name, Phone, Delivery Address)
+ * ProfileActivity displays and allows editing of user details (Name, Phone, Delivery Address, Loyalty Points)
  * and displays role (Customer/Admin).
  */
 public class ProfileActivity extends AppCompatActivity {
 
-    private TextView tvRoleBadge;
+    private TextView tvRoleBadge, tvLoyaltyPoints;
     private TextInputLayout tilFullName, tilPhone, tilEmail, tilAddress;
     private TextInputEditText etFullName, etPhone, etEmail, etAddress;
     private MaterialButton btnSaveProfile, btnLogout;
@@ -51,6 +51,8 @@ public class ProfileActivity extends AppCompatActivity {
 
     private void initViews() {
         tvRoleBadge = findViewById(R.id.tvRoleBadge);
+        tvLoyaltyPoints = findViewById(R.id.tvLoyaltyPoints);
+
         tilFullName = findViewById(R.id.tilFullName);
         tilPhone = findViewById(R.id.tilPhone);
         tilEmail = findViewById(R.id.tilEmail);
@@ -68,12 +70,9 @@ public class ProfileActivity extends AppCompatActivity {
 
     private void loadProfileData() {
         FirebaseUser fbUser = authViewModel.getCurrentUser();
-        if (fbUser == null) {
-            finish();
-            return;
-        }
+        String userId = fbUser != null ? fbUser.getUid() : "demo_user_123";
 
-        authViewModel.getUserProfile(fbUser.getUid()).observe(this, resource -> {
+        authViewModel.getUserProfile(userId).observe(this, resource -> {
             if (resource.status == Resource.Status.LOADING) {
                 progressBar.setVisibility(View.VISIBLE);
             } else if (resource.status == Resource.Status.SUCCESS && resource.data != null) {
@@ -84,6 +83,9 @@ public class ProfileActivity extends AppCompatActivity {
                 etEmail.setText(currentUserModel.getEmail());
                 etAddress.setText(currentUserModel.getAddress());
                 tvRoleBadge.setText("ROLE: " + (currentUserModel.getRole() != null ? currentUserModel.getRole().toUpperCase() : "CUSTOMER"));
+                if (tvLoyaltyPoints != null) {
+                    tvLoyaltyPoints.setText("⭐ " + currentUserModel.getLoyaltyPoints() + " Loyalty Points (Redeem KES 200 Discount)");
+                }
             } else if (resource.status == Resource.Status.ERROR) {
                 progressBar.setVisibility(View.GONE);
                 Toast.makeText(this, "Failed to load profile", Toast.LENGTH_SHORT).show();

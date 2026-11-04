@@ -43,6 +43,16 @@
                     android:textColor="@color/white"
                     android:textSize="12sp"
                     android:textStyle="bold" />
+
+                <TextView
+                    android:id="@+id/tvLoyaltyPoints"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="8dp"
+                    android:text="⭐ 120 Loyalty Points (Redeem KES 200 Discount)"
+                    android:textColor="?attr/colorPrimary"
+                    android:textSize="13sp"
+                    android:textStyle="bold" />
             </LinearLayout>
         </com.google.android.material.card.MaterialCardView>
 

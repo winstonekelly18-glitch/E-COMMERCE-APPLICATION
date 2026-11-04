@@ -12,6 +12,7 @@ public class User {
     private String role; // "customer" or "admin"
     private String address;
     private double walletBalance = 5000.00; // Default wallet balance for instant payments
+    private int loyaltyPoints = 120; // Default loyalty reward points
     private long createdAt;
 
     // Default constructor required for Firebase Firestore
@@ -25,6 +26,7 @@ public class User {
         this.role = role;
         this.address = address;
         this.walletBalance = 5000.00;
+        this.loyaltyPoints = 120;
         this.createdAt = createdAt;
     }
 
@@ -48,6 +50,9 @@ public class User {
 
     public double getWalletBalance() { return walletBalance; }
     public void setWalletBalance(double walletBalance) { this.walletBalance = walletBalance; }
+
+    public int getLoyaltyPoints() { return loyaltyPoints; }
+    public void setLoyaltyPoints(int loyaltyPoints) { this.loyaltyPoints = loyaltyPoints; }
 
     public long getCreatedAt() { return createdAt; }
     public void setCreatedAt(long createdAt) { this.createdAt = createdAt; }

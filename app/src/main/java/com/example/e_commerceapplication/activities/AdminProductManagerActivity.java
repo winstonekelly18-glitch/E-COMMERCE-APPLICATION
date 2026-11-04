@@ -1,5 +1,7 @@
 package com.example.e_commerceapplication.activities;
 
+import android.content.Intent;
+import android.net.Uri;
 import android.os.Bundle;
 import android.view.LayoutInflater;
 import android.view.View;
@@ -27,7 +29,7 @@ import java.util.Arrays;
 import java.util.List;
 
 /**
- * AdminProductManagerActivity allows adding, editing, and deleting products in the catalogue.
+ * AdminProductManagerActivity allows adding, editing, deleting, and sending automated supplier restock PO emails.
  */
 public class AdminProductManagerActivity extends AppCompatActivity implements ProductAdapter.OnProductClickListener {
 
@@ -141,7 +143,19 @@ public class AdminProductManagerActivity extends AppCompatActivity implements Pr
             });
         });
 
-        if (existing != null) {
+        if (existing != null && existing.getStockQuantity() <= 3) {
+            builder.setNeutralButton("Supplier Restock PO", (dialog, which) -> {
+                Intent emailIntent = new Intent(Intent.ACTION_SENDTO);
+                emailIntent.setData(Uri.parse("mailto:supplier@shopmpesa.com"));
+                emailIntent.putExtra(Intent.EXTRA_SUBJECT, "RESTOCK PURCHASE ORDER: " + existing.getName());
+                emailIntent.putExtra(Intent.EXTRA_TEXT, "URGENT RESTOCK ORDER:\nProduct: " + existing.getName() + "\nCurrent Stock: " + existing.getStockQuantity() + "\nRequested Restock Qty: 50 units.");
+                try {
+                    startActivity(Intent.createChooser(emailIntent, "Send Supplier Restock PO"));
+                } catch (Exception e) {
+                    Toast.makeText(this, "No email client found", Toast.LENGTH_SHORT).show();
+                }
+            });
+        } else if (existing != null) {
             builder.setNeutralButton("Delete", (dialog, which) -> {
                 adminViewModel.deleteProduct(existing.getProductId()).observe(this, resource -> {
                     if (resource.status == Resource.Status.SUCCESS) {
