@@ -34,7 +34,7 @@
                 android:layout_height="wrap_content"
                 android:orientation="vertical">
 
-                <!-- Search Input Bar -->
+                <!-- Search Input Bar with Voice Search Microphone Button -->
                 <com.google.android.material.textfield.TextInputLayout
                     android:id="@+id/tilSearch"
                     style="@style/Widget.Material3.TextInputLayout.OutlinedBox"
@@ -43,6 +43,9 @@
                     android:layout_marginHorizontal="12dp"
                     android:layout_marginTop="8dp"
                     app:startIconDrawable="@android:drawable/ic_menu_search"
+                    app:endIconDrawable="@android:drawable/ic_btn_speak_now"
+                    app:endIconMode="custom"
+                    app:endIconContentDescription="Voice Search"
                     android:hint="@string/search_hint">
 
                     <com.google.android.material.textfield.TextInputEditText

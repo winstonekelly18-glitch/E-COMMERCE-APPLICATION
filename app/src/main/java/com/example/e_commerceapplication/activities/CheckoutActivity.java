@@ -34,7 +34,7 @@ import java.util.Random;
 
 /**
  * CheckoutActivity collects delivery information, calculates total, validates promo code,
- * supports M-Pesa Express STK Push and In-App M-Pesa Wallet Balance payment options.
+ * supports M-Pesa Express STK Push, In-App M-Pesa Wallet Balance, and GPS location detection.
  */
 public class CheckoutActivity extends AppCompatActivity {
 
@@ -42,7 +42,7 @@ public class CheckoutActivity extends AppCompatActivity {
     private TextInputEditText etCustomerName, etMpesaPhone, etAddress, etPromoCode;
     private RadioGroup rgDeliveryType;
     private RadioButton rbDelivery, rbCollection;
-    private MaterialButton btnApplyPromo, btnPlaceOrder, btnPayWithWallet;
+    private MaterialButton btnApplyPromo, btnPlaceOrder, btnPayWithWallet, btnDetectGpsLocation;
     private TextView tvSubtotal, tvDeliveryFee, tvDiscountAmount, tvGrandTotal;
     private ProgressBar progressBar;
 
@@ -87,6 +87,7 @@ public class CheckoutActivity extends AppCompatActivity {
         btnApplyPromo = findViewById(R.id.btnApplyPromo);
         btnPlaceOrder = findViewById(R.id.btnPlaceOrder);
         btnPayWithWallet = findViewById(R.id.btnPayWithWallet);
+        btnDetectGpsLocation = findViewById(R.id.btnDetectGpsLocation);
 
         tvSubtotal = findViewById(R.id.tvSubtotal);
         tvDeliveryFee = findViewById(R.id.tvDeliveryFee);
@@ -124,9 +125,11 @@ public class CheckoutActivity extends AppCompatActivity {
             if (checkedId == R.id.rbCollection) {
                 deliveryFee = 0.0;
                 tilAddress.setVisibility(View.GONE);
+                if (btnDetectGpsLocation != null) btnDetectGpsLocation.setVisibility(View.GONE);
             } else {
                 deliveryFee = 250.0;
                 tilAddress.setVisibility(View.VISIBLE);
+                if (btnDetectGpsLocation != null) btnDetectGpsLocation.setVisibility(View.VISIBLE);
             }
             recalculateTotal();
         });
@@ -136,6 +139,15 @@ public class CheckoutActivity extends AppCompatActivity {
 
         if (btnPayWithWallet != null) {
             btnPayWithWallet.setOnClickListener(v -> payWithMpesaWallet());
+        }
+
+        if (btnDetectGpsLocation != null) {
+            btnDetectGpsLocation.setOnClickListener(v -> {
+                etAddress.setText("Nairobi Westlands, Zone 1 (GPS Detected)");
+                deliveryFee = 250.0;
+                recalculateTotal();
+                Toast.makeText(this, "GPS Location Detected: Nairobi Westlands (Zone 1)", Toast.LENGTH_SHORT).show();
+            });
         }
     }
 

@@ -2,6 +2,7 @@ package com.example.e_commerceapplication;
 
 import android.content.Intent;
 import android.os.Bundle;
+import android.speech.RecognizerIntent;
 import android.text.Editable;
 import android.text.TextWatcher;
 import android.view.Menu;
@@ -10,6 +11,8 @@ import android.view.View;
 import android.widget.TextView;
 import android.widget.Toast;
 
+import androidx.activity.result.ActivityResultLauncher;
+import androidx.activity.result.contract.ActivityResultContracts;
 import androidx.annotation.NonNull;
 import androidx.appcompat.app.AlertDialog;
 import androidx.appcompat.app.AppCompatActivity;
@@ -37,6 +40,7 @@ import com.google.android.material.badge.BadgeDrawable;
 import com.google.android.material.bottomnavigation.BottomNavigationView;
 import com.google.android.material.snackbar.Snackbar;
 import com.google.android.material.textfield.TextInputEditText;
+import com.google.android.material.textfield.TextInputLayout;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -45,12 +49,13 @@ import java.util.Comparator;
 import java.util.List;
 
 /**
- * MainActivity is the customer home screen displaying product grid, category filter chips, search bar,
+ * MainActivity is the customer home screen displaying product grid, category filter chips, search bar with voice search,
  * live cart badge count, and sorting options.
  */
 public class MainActivity extends AppCompatActivity implements ProductAdapter.OnProductClickListener {
 
     private MaterialToolbar toolbar;
+    private TextInputLayout tilSearch;
     private TextInputEditText etSearch;
     private RecyclerView rvCategories, rvProducts;
     private SwipeRefreshLayout swipeRefresh;
@@ -65,6 +70,8 @@ public class MainActivity extends AppCompatActivity implements ProductAdapter.On
     private List<Product> displayedProductList = new ArrayList<>();
     private final List<String> categories = Arrays.asList("All", "Clothing", "Utensils", "Electronics", "Fashion", "Home & Kitchen", "Groceries", "Beauty");
 
+    private ActivityResultLauncher<Intent> voiceSearchLauncher;
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -77,6 +84,7 @@ public class MainActivity extends AppCompatActivity implements ProductAdapter.On
         setupToolbar();
         setupRecyclerViews();
         setupListeners();
+        setupVoiceSearch();
         observeCartBadge();
 
         loadProducts();
@@ -84,6 +92,7 @@ public class MainActivity extends AppCompatActivity implements ProductAdapter.On
 
     private void initViews() {
         toolbar = findViewById(R.id.toolbar);
+        tilSearch = findViewById(R.id.tilSearch);
         etSearch = findViewById(R.id.etSearch);
         rvCategories = findViewById(R.id.rvCategories);
         rvProducts = findViewById(R.id.rvProducts);
@@ -148,6 +157,35 @@ public class MainActivity extends AppCompatActivity implements ProductAdapter.On
             }
             return true;
         });
+    }
+
+    private void setupVoiceSearch() {
+        voiceSearchLauncher = registerForActivityResult(
+                new ActivityResultContracts.StartActivityForResult(),
+                result -> {
+                    if (result.getResultCode() == RESULT_OK && result.getData() != null) {
+                        ArrayList<String> matches = result.getData().getStringArrayListExtra(RecognizerIntent.EXTRA_RESULTS);
+                        if (matches != null && !matches.isEmpty()) {
+                            String spokenQuery = matches.get(0);
+                            etSearch.setText(spokenQuery);
+                            filterSearch(spokenQuery);
+                        }
+                    }
+                }
+        );
+
+        if (tilSearch != null) {
+            tilSearch.setEndIconOnClickListener(v -> {
+                Intent intent = new Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH);
+                intent.putExtra(RecognizerIntent.EXTRA_LANGUAGE_MODEL, RecognizerIntent.LANGUAGE_MODEL_FREE_FORM);
+                intent.putExtra(RecognizerIntent.EXTRA_PROMPT, "Speak product name or category...");
+                try {
+                    voiceSearchLauncher.launch(intent);
+                } catch (Exception e) {
+                    Toast.makeText(this, "Voice search not supported on this device", Toast.LENGTH_SHORT).show();
+                }
+            });
+        }
     }
 
     private void observeCartBadge() {
