@@ -245,8 +245,17 @@
             android:layout_width="match_parent"
             android:layout_height="56dp"
             android:layout_marginTop="24dp"
-            android:text="Pay with M-Pesa"
+            android:text="Pay with M-Pesa Express"
             android:textSize="16sp" />
+
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/btnPayWithWallet"
+            style="@style/Widget.Material3.Button.TonalButton"
+            android:layout_width="match_parent"
+            android:layout_height="52dp"
+            android:layout_marginTop="10dp"
+            android:text="Pay using M-Pesa Wallet Balance"
+            android:textColor="?attr/colorPrimary" />
 
         <ProgressBar
             android:id="@+id/progressBar"

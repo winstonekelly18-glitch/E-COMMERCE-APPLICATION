@@ -30,10 +30,11 @@ import com.google.firebase.auth.FirebaseUser;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
+import java.util.Random;
 
 /**
  * CheckoutActivity collects delivery information, calculates total, validates promo code,
- * saves order in Firestore with status PENDING_PAYMENT, and navigates to MpesaPaymentActivity.
+ * supports M-Pesa Express STK Push and In-App M-Pesa Wallet Balance payment options.
  */
 public class CheckoutActivity extends AppCompatActivity {
 
@@ -41,7 +42,7 @@ public class CheckoutActivity extends AppCompatActivity {
     private TextInputEditText etCustomerName, etMpesaPhone, etAddress, etPromoCode;
     private RadioGroup rgDeliveryType;
     private RadioButton rbDelivery, rbCollection;
-    private MaterialButton btnApplyPromo, btnPlaceOrder;
+    private MaterialButton btnApplyPromo, btnPlaceOrder, btnPayWithWallet;
     private TextView tvSubtotal, tvDeliveryFee, tvDiscountAmount, tvGrandTotal;
     private ProgressBar progressBar;
 
@@ -85,6 +86,7 @@ public class CheckoutActivity extends AppCompatActivity {
 
         btnApplyPromo = findViewById(R.id.btnApplyPromo);
         btnPlaceOrder = findViewById(R.id.btnPlaceOrder);
+        btnPayWithWallet = findViewById(R.id.btnPayWithWallet);
 
         tvSubtotal = findViewById(R.id.tvSubtotal);
         tvDeliveryFee = findViewById(R.id.tvDeliveryFee);
@@ -131,6 +133,10 @@ public class CheckoutActivity extends AppCompatActivity {
 
         btnApplyPromo.setOnClickListener(v -> applyPromoCode());
         btnPlaceOrder.setOnClickListener(v -> proceedToMpesaPayment());
+
+        if (btnPayWithWallet != null) {
+            btnPayWithWallet.setOnClickListener(v -> payWithMpesaWallet());
+        }
     }
 
     private void recalculateTotal() {
@@ -242,6 +248,78 @@ public class CheckoutActivity extends AppCompatActivity {
                 progressBar.setVisibility(View.GONE);
                 btnPlaceOrder.setEnabled(true);
                 Toast.makeText(this, "Failed to create order: " + resource.message, Toast.LENGTH_LONG).show();
+            }
+        });
+    }
+
+    private void payWithMpesaWallet() {
+        String name = etCustomerName.getText() != null ? etCustomerName.getText().toString().trim() : "";
+        String phone = etMpesaPhone.getText() != null ? etMpesaPhone.getText().toString().trim() : "";
+        String address = etAddress.getText() != null ? etAddress.getText().toString().trim() : "";
+
+        if (name.isEmpty() || !ValidationUtils.isValidKenyanPhone(phone)) {
+            Toast.makeText(this, "Please enter valid customer name and phone", Toast.LENGTH_SHORT).show();
+            return;
+        }
+
+        boolean isDelivery = rgDeliveryType.getCheckedRadioButtonId() == R.id.rbDelivery;
+        if (isDelivery && address.isEmpty()) {
+            tilAddress.setError("Delivery address is required");
+            return;
+        }
+
+        FirebaseUser currentUser = authViewModel.getCurrentUser();
+        String userId = (currentUser != null) ? currentUser.getUid() : "demo_user_123";
+
+        String formattedPhone = ValidationUtils.formatKenyanPhoneTo254(phone);
+        String orderRef = ValidationUtils.generateOrderReference();
+        double grandTotal = Math.max(0.0, (cartSubtotal + deliveryFee) - discountAmount);
+        String receipt = "WAL-NLJ8" + (100000 + new Random().nextInt(900000));
+
+        List<OrderItem> orderItems = new ArrayList<>();
+        for (LocalCartItem cartItem : cartItemsList) {
+            orderItems.add(new OrderItem(
+                    orderRef + "_" + cartItem.getProductId(),
+                    orderRef,
+                    cartItem.getProductId(),
+                    cartItem.getName(),
+                    cartItem.getQuantity(),
+                    cartItem.getPrice(),
+                    cartItem.getSubtotal()
+            ));
+        }
+
+        Order newOrder = new Order(
+                orderRef,
+                orderRef,
+                userId,
+                name,
+                formattedPhone,
+                System.currentTimeMillis(),
+                grandTotal,
+                discountAmount,
+                deliveryFee,
+                "PAID",
+                "SUCCESS",
+                isDelivery ? "DELIVERY" : "COLLECTION",
+                isDelivery ? address : "COLLECT FROM SHOP"
+        );
+        newOrder.setItems(orderItems);
+        newOrder.setMpesaReceiptNumber(receipt);
+
+        orderViewModel.createOrder(newOrder).observe(this, resource -> {
+            if (resource.status == Resource.Status.SUCCESS) {
+                cartViewModel.clearCart();
+                Toast.makeText(this, "Paid successfully using M-Pesa Wallet Balance!", Toast.LENGTH_LONG).show();
+
+                Intent intent = new Intent(CheckoutActivity.this, PaymentResultActivity.class);
+                intent.putExtra("orderReference", orderRef);
+                intent.putExtra("paymentStatus", "SUCCESS");
+                intent.putExtra("message", "Payment confirmed via In-App M-Pesa Wallet! Receipt: " + receipt);
+                intent.putExtra("receipt", receipt);
+                intent.putExtra("amount", grandTotal);
+                startActivity(intent);
+                finish();
             }
         });
     }

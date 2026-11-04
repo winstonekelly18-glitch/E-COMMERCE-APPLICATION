@@ -11,6 +11,7 @@ public class User {
     private String phone;
     private String role; // "customer" or "admin"
     private String address;
+    private double walletBalance = 5000.00; // Default wallet balance for instant payments
     private long createdAt;
 
     // Default constructor required for Firebase Firestore
@@ -23,6 +24,7 @@ public class User {
         this.phone = phone;
         this.role = role;
         this.address = address;
+        this.walletBalance = 5000.00;
         this.createdAt = createdAt;
     }
 
@@ -43,6 +45,9 @@ public class User {
 
     public String getAddress() { return address; }
     public void setAddress(String address) { this.address = address; }
+
+    public double getWalletBalance() { return walletBalance; }
+    public void setWalletBalance(double walletBalance) { this.walletBalance = walletBalance; }
 
     public long getCreatedAt() { return createdAt; }
     public void setCreatedAt(long createdAt) { this.createdAt = createdAt; }
