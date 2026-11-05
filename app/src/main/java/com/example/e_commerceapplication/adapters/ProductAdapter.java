@@ -21,7 +21,7 @@ import java.util.List;
 import java.util.Locale;
 
 /**
- * RecyclerView Adapter for displaying products in a 2-column grid with optimized image caching.
+ * RecyclerView Adapter for displaying products in a 2-column grid with optimized instant image caching.
  */
 public class ProductAdapter extends RecyclerView.Adapter<ProductAdapter.ProductViewHolder> {
 
@@ -63,7 +63,8 @@ public class ProductAdapter extends RecyclerView.Adapter<ProductAdapter.ProductV
                 .load(product.getImageUrl())
                 .diskCacheStrategy(DiskCacheStrategy.ALL)
                 .centerCrop()
-                .override(400, 400)
+                .override(300, 300)
+                .dontAnimate()
                 .placeholder(R.mipmap.ic_launcher)
                 .error(R.mipmap.ic_launcher)
                 .into(holder.ivProductImage);
