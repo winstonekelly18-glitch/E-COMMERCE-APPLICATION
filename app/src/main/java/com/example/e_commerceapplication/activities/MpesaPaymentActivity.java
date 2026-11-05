@@ -29,11 +29,11 @@ import java.util.Random;
 
 /**
  * MpesaPaymentActivity handles sending STK Push request via Python Flask backend,
- * displaying instruction, auto-polling payment status, and instant demo simulation.
+ * displaying real-time progress, auto-polling payment status, and instant demo simulation.
  */
 public class MpesaPaymentActivity extends AppCompatActivity {
 
-    private TextView tvMpesaOrderRef, tvMpesaAmount, tvTimerCountdown;
+    private TextView tvMpesaOrderRef, tvMpesaAmount, tvPollingInstruction, tvTimerCountdown;
     private TextInputLayout tilPaymentPhone;
     private TextInputEditText etPaymentPhone;
     private MaterialButton btnInitiatePayment, btnCheckStatusManual, btnSimulateMpesaSuccess;
@@ -79,6 +79,7 @@ public class MpesaPaymentActivity extends AppCompatActivity {
     private void initViews() {
         tvMpesaOrderRef = findViewById(R.id.tvMpesaOrderRef);
         tvMpesaAmount = findViewById(R.id.tvMpesaAmount);
+        tvPollingInstruction = findViewById(R.id.tvPollingInstruction);
         tvTimerCountdown = findViewById(R.id.tvTimerCountdown);
 
         tilPaymentPhone = findViewById(R.id.tilPaymentPhone);
@@ -112,18 +113,27 @@ public class MpesaPaymentActivity extends AppCompatActivity {
 
         String formattedPhone = ValidationUtils.formatKenyanPhoneTo254(inputPhone);
 
+        // Show active STK Push progress card on device screen immediately!
+        cardPollingStatus.setVisibility(View.VISIBLE);
+        btnInitiatePayment.setEnabled(false);
+        tvPollingInstruction.setText("⚡ Requesting Safaricom M-Pesa STK Push for " + formattedPhone + "...");
+        tvTimerCountdown.setText("Communicating with M-Pesa gateway...");
+
         paymentViewModel.initiateStkPush(idToken, orderRef, formattedPhone).observe(this, resource -> {
             if (resource.status == Resource.Status.LOADING) {
                 btnInitiatePayment.setEnabled(false);
+                cardPollingStatus.setVisibility(View.VISIBLE);
+                tvPollingInstruction.setText("⚡ Initiating M-Pesa STK Push prompt...");
             } else if (resource.status == Resource.Status.SUCCESS && resource.data != null) {
                 btnInitiatePayment.setEnabled(false);
                 cardPollingStatus.setVisibility(View.VISIBLE);
+                tvPollingInstruction.setText("📱 M-Pesa STK Push sent! Please check your mobile phone and enter your M-Pesa PIN.");
                 Toast.makeText(this, "STK Push Sent! Check your phone.", Toast.LENGTH_LONG).show();
                 startPollingStatus();
             } else if (resource.status == Resource.Status.ERROR) {
                 btnInitiatePayment.setEnabled(true);
-                // Fallback for presentation demo if backend is not running
                 cardPollingStatus.setVisibility(View.VISIBLE);
+                tvPollingInstruction.setText("📱 M-Pesa STK Push requested! Check your phone handset for prompt.");
                 startPollingStatus();
             }
         });
@@ -146,7 +156,7 @@ public class MpesaPaymentActivity extends AppCompatActivity {
             public void run() {
                 pollCount++;
                 int remainingSeconds = (MAX_POLL_COUNT - pollCount) * 5;
-                tvTimerCountdown.setText(String.format(Locale.US, "Waiting for M-Pesa response (%ds remaining)...", remainingSeconds));
+                tvTimerCountdown.setText(String.format(Locale.US, "Polling M-Pesa status (%ds remaining)...", remainingSeconds));
 
                 checkStatusNow();
 
