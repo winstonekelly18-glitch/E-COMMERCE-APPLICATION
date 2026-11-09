@@ -16,7 +16,7 @@ import com.example.e_commerceapplication.viewmodels.AuthViewModel;
 import com.google.firebase.auth.FirebaseUser;
 
 /**
- * Splash screen activity that verifies login status and routes user based on role (Customer vs Admin).
+ * Splash screen activity that verifies login status and routes user instantly based on role.
  */
 public class SplashActivity extends AppCompatActivity {
 
@@ -30,8 +30,8 @@ public class SplashActivity extends AppCompatActivity {
 
         authViewModel = new ViewModelProvider(this).get(AuthViewModel.class);
 
-        // Delayed check to give splash animation 1.2 seconds
-        new Handler(Looper.getMainLooper()).postDelayed(this::checkUserSession, 1200);
+        // Fast splash launch (400ms) for instant start
+        new Handler(Looper.getMainLooper()).postDelayed(this::checkUserSession, 400);
     }
 
     private void checkUserSession() {
@@ -54,12 +54,11 @@ public class SplashActivity extends AppCompatActivity {
                     }
                 });
 
-                // Safety timeout: navigate to LoginActivity if profile lookup takes > 2 seconds
                 new Handler(Looper.getMainLooper()).postDelayed(() -> {
                     if (!isNavigated) {
                         navigateTo(LoginActivity.class);
                     }
-                }, 2000);
+                }, 1000);
             }
         } catch (Exception e) {
             navigateTo(LoginActivity.class);
@@ -69,7 +68,9 @@ public class SplashActivity extends AppCompatActivity {
     private void navigateTo(Class<?> targetClass) {
         if (!isNavigated) {
             isNavigated = true;
-            startActivity(new Intent(SplashActivity.this, targetClass));
+            Intent intent = new Intent(SplashActivity.this, targetClass);
+            startActivity(intent);
+            overridePendingTransition(0, 0);
             finish();
         }
     }

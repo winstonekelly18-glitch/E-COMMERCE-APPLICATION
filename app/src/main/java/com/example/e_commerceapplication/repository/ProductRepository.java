@@ -16,9 +16,11 @@ import java.util.List;
 
 /**
  * Repository class responsible for fetching product catalogue, categories,
- * reviews, and wishlist data with rich sample fallback.
+ * reviews, and wishlist data with zero-delay in-memory caching.
  */
 public class ProductRepository {
+
+    private static List<Product> cachedMemoryProducts = null;
 
     private FirebaseFirestore getDb() {
         try {
@@ -29,6 +31,9 @@ public class ProductRepository {
     }
 
     private List<Product> getSampleProducts() {
+        if (cachedMemoryProducts != null && !cachedMemoryProducts.isEmpty()) {
+            return cachedMemoryProducts;
+        }
         List<Product> list = new ArrayList<>();
 
         // Clothing & Apparel
@@ -57,6 +62,7 @@ public class ProductRepository {
         // Beauty
         list.add(new Product("prod_b1", "Raw Shea Butter Body Lotion 400ml", "Deeply moisturizing organic African shea butter lotion.", 1450.00, 14, "Beauty", "https://images.unsplash.com/photo-1608248597261-e4d0450cbf1c?w=500&q=80&auto=format"));
 
+        cachedMemoryProducts = list;
         return list;
     }
 
@@ -76,78 +82,75 @@ public class ProductRepository {
 
     public LiveData<Resource<List<Product>>> getAllProducts() {
         MutableLiveData<Resource<List<Product>>> result = new MutableLiveData<>();
-        result.setValue(Resource.loading());
+        // Instant 0ms load from memory cache
+        result.setValue(Resource.success(getSampleProducts()));
 
         FirebaseFirestore db = getDb();
-        if (db == null) {
-            result.setValue(Resource.success(getSampleProducts()));
-            return result;
-        }
-
-        db.collection(Constants.COLLECTION_PRODUCTS)
-                .get()
-                .addOnSuccessListener(queryDocumentSnapshots -> {
-                    List<Product> products = new ArrayList<>();
-                    for (DocumentSnapshot doc : queryDocumentSnapshots) {
-                        Product product = doc.toObject(Product.class);
-                        if (product != null) {
-                            product.setProductId(doc.getId());
-                            products.add(product);
+        if (db != null) {
+            db.collection(Constants.COLLECTION_PRODUCTS)
+                    .get()
+                    .addOnSuccessListener(queryDocumentSnapshots -> {
+                        List<Product> products = new ArrayList<>();
+                        for (DocumentSnapshot doc : queryDocumentSnapshots) {
+                            Product product = doc.toObject(Product.class);
+                            if (product != null) {
+                                product.setProductId(doc.getId());
+                                products.add(product);
+                            }
                         }
-                    }
-                    if (products.isEmpty()) {
-                        result.setValue(Resource.success(getSampleProducts()));
-                    } else {
-                        result.setValue(Resource.success(products));
-                    }
-                })
-                .addOnFailureListener(e -> result.setValue(Resource.success(getSampleProducts())));
+                        if (!products.isEmpty()) {
+                            cachedMemoryProducts = products;
+                            result.setValue(Resource.success(products));
+                        }
+                    });
+        }
 
         return result;
     }
 
     public LiveData<Resource<List<Product>>> getProductsByCategory(String category) {
         MutableLiveData<Resource<List<Product>>> result = new MutableLiveData<>();
-        result.setValue(Resource.loading());
+        // Instant 0ms load from memory cache
+        result.setValue(Resource.success(filterSampleByCategory(category)));
 
         FirebaseFirestore db = getDb();
-        if (db == null) {
-            result.setValue(Resource.success(filterSampleByCategory(category)));
-            return result;
-        }
+        if (db != null) {
+            Query query = category.equalsIgnoreCase("All") ?
+                    db.collection(Constants.COLLECTION_PRODUCTS) :
+                    db.collection(Constants.COLLECTION_PRODUCTS).whereEqualTo("category", category);
 
-        Query query = category.equalsIgnoreCase("All") ?
-                db.collection(Constants.COLLECTION_PRODUCTS) :
-                db.collection(Constants.COLLECTION_PRODUCTS).whereEqualTo("category", category);
-
-        query.get()
-                .addOnSuccessListener(queryDocumentSnapshots -> {
-                    List<Product> products = new ArrayList<>();
-                    for (DocumentSnapshot doc : queryDocumentSnapshots) {
-                        Product product = doc.toObject(Product.class);
-                        if (product != null) {
-                            product.setProductId(doc.getId());
-                            products.add(product);
+            query.get()
+                    .addOnSuccessListener(queryDocumentSnapshots -> {
+                        List<Product> products = new ArrayList<>();
+                        for (DocumentSnapshot doc : queryDocumentSnapshots) {
+                            Product product = doc.toObject(Product.class);
+                            if (product != null) {
+                                product.setProductId(doc.getId());
+                                products.add(product);
+                            }
                         }
-                    }
-                    if (products.isEmpty()) {
-                        result.setValue(Resource.success(filterSampleByCategory(category)));
-                    } else {
-                        result.setValue(Resource.success(products));
-                    }
-                })
-                .addOnFailureListener(e -> result.setValue(Resource.success(filterSampleByCategory(category))));
+                        if (!products.isEmpty()) {
+                            result.setValue(Resource.success(products));
+                        }
+                    });
+        }
 
         return result;
     }
 
     public LiveData<Resource<Product>> getProductById(String productId) {
         MutableLiveData<Resource<Product>> result = new MutableLiveData<>();
-        result.setValue(Resource.loading());
+
+        for (Product p : getSampleProducts()) {
+            if (productId.equalsIgnoreCase(p.getProductId())) {
+                result.setValue(Resource.success(p));
+                return result;
+            }
+        }
 
         FirebaseFirestore db = getDb();
         if (db == null) {
-            result.setValue(Resource.error("Firestore unavailable"));
+            result.setValue(Resource.error("Product not found"));
             return result;
         }
 
@@ -169,26 +172,17 @@ public class ProductRepository {
 
     public LiveData<Resource<Boolean>> toggleWishlist(String userId, String productId, boolean isCurrentlyWishlisted) {
         MutableLiveData<Resource<Boolean>> result = new MutableLiveData<>();
-        result.setValue(Resource.loading());
+        result.setValue(Resource.success(!isCurrentlyWishlisted));
 
         FirebaseFirestore db = getDb();
-        if (db == null) {
-            result.setValue(Resource.success(!isCurrentlyWishlisted));
-            return result;
-        }
-
-        String docId = userId + "_" + productId;
-        if (isCurrentlyWishlisted) {
-            db.collection(Constants.COLLECTION_WISHLIST).document(docId)
-                    .delete()
-                    .addOnSuccessListener(unused -> result.setValue(Resource.success(false)))
-                    .addOnFailureListener(e -> result.setValue(Resource.success(false)));
-        } else {
-            Wishlist item = new Wishlist(docId, userId, productId, System.currentTimeMillis());
-            db.collection(Constants.COLLECTION_WISHLIST).document(docId)
-                    .set(item)
-                    .addOnSuccessListener(unused -> result.setValue(Resource.success(true)))
-                    .addOnFailureListener(e -> result.setValue(Resource.success(true)));
+        if (db != null) {
+            String docId = userId + "_" + productId;
+            if (isCurrentlyWishlisted) {
+                db.collection(Constants.COLLECTION_WISHLIST).document(docId).delete();
+            } else {
+                Wishlist item = new Wishlist(docId, userId, productId, System.currentTimeMillis());
+                db.collection(Constants.COLLECTION_WISHLIST).document(docId).set(item);
+            }
         }
 
         return result;
@@ -196,53 +190,38 @@ public class ProductRepository {
 
     public LiveData<Resource<List<Review>>> getProductReviews(String productId) {
         MutableLiveData<Resource<List<Review>>> result = new MutableLiveData<>();
-        result.setValue(Resource.loading());
+        List<Review> list = new ArrayList<>();
+        list.add(new Review("rev_1", productId, "u1", "Winstone Kelly", 5.0f, "Great quality product! Highly recommended.", System.currentTimeMillis()));
+        result.setValue(Resource.success(list));
 
         FirebaseFirestore db = getDb();
-        if (db == null) {
-            List<Review> list = new ArrayList<>();
-            list.add(new Review("rev_1", productId, "u1", "Winstone Kelly", 5.0f, "Great quality product! Highly recommended.", System.currentTimeMillis()));
-            result.setValue(Resource.success(list));
-            return result;
+        if (db != null) {
+            db.collection(Constants.COLLECTION_REVIEWS)
+                    .whereEqualTo("productId", productId)
+                    .get()
+                    .addOnSuccessListener(queryDocumentSnapshots -> {
+                        List<Review> reviews = new ArrayList<>();
+                        for (DocumentSnapshot doc : queryDocumentSnapshots) {
+                            Review review = doc.toObject(Review.class);
+                            if (review != null) reviews.add(review);
+                        }
+                        if (!reviews.isEmpty()) {
+                            result.setValue(Resource.success(reviews));
+                        }
+                    });
         }
-
-        db.collection(Constants.COLLECTION_REVIEWS)
-                .whereEqualTo("productId", productId)
-                .get()
-                .addOnSuccessListener(queryDocumentSnapshots -> {
-                    List<Review> reviews = new ArrayList<>();
-                    for (DocumentSnapshot doc : queryDocumentSnapshots) {
-                        Review review = doc.toObject(Review.class);
-                        if (review != null) reviews.add(review);
-                    }
-                    if (reviews.isEmpty()) {
-                        reviews.add(new Review("rev_1", productId, "u1", "Winstone Kelly", 5.0f, "Great quality product! Highly recommended.", System.currentTimeMillis()));
-                    }
-                    result.setValue(Resource.success(reviews));
-                })
-                .addOnFailureListener(e -> {
-                    List<Review> reviews = new ArrayList<>();
-                    reviews.add(new Review("rev_1", productId, "u1", "Winstone Kelly", 5.0f, "Great quality product! Highly recommended.", System.currentTimeMillis()));
-                    result.setValue(Resource.success(reviews));
-                });
 
         return result;
     }
 
     public LiveData<Resource<Boolean>> addProductReview(Review review) {
         MutableLiveData<Resource<Boolean>> result = new MutableLiveData<>();
-        result.setValue(Resource.loading());
+        result.setValue(Resource.success(true));
 
         FirebaseFirestore db = getDb();
-        if (db == null) {
-            result.setValue(Resource.success(true));
-            return result;
+        if (db != null) {
+            db.collection(Constants.COLLECTION_REVIEWS).add(review);
         }
-
-        db.collection(Constants.COLLECTION_REVIEWS)
-                .add(review)
-                .addOnSuccessListener(documentReference -> result.setValue(Resource.success(true)))
-                .addOnFailureListener(e -> result.setValue(Resource.success(true)));
 
         return result;
     }
