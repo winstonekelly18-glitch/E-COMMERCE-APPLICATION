@@ -23,14 +23,15 @@ import java.util.Locale;
 
 /**
  * CartActivity displays local Room database cart items, auto-recalculates subtotal/total,
- * and handles quantity modifications.
+ * and handles quantity modifications and empty state action.
  */
 public class CartActivity extends AppCompatActivity implements CartAdapter.OnCartChangeListener {
 
     private MaterialToolbar toolbarCart;
     private RecyclerView rvCartItems;
     private TextView tvEmptyCart, tvCartTotalAmount;
-    private MaterialButton btnClearCart, btnCheckout;
+    private View layoutEmptyCart;
+    private MaterialButton btnClearCart, btnCheckout, btnStartShopping;
 
     private CartViewModel cartViewModel;
     private CartAdapter cartAdapter;
@@ -53,9 +54,11 @@ public class CartActivity extends AppCompatActivity implements CartAdapter.OnCar
         toolbarCart = findViewById(R.id.toolbarCart);
         rvCartItems = findViewById(R.id.rvCartItems);
         tvEmptyCart = findViewById(R.id.tvEmptyCart);
+        layoutEmptyCart = findViewById(R.id.layoutEmptyCart);
         tvCartTotalAmount = findViewById(R.id.tvCartTotalAmount);
         btnClearCart = findViewById(R.id.btnClearCart);
         btnCheckout = findViewById(R.id.btnCheckout);
+        btnStartShopping = findViewById(R.id.btnStartShopping);
 
         setSupportActionBar(toolbarCart);
         if (getSupportActionBar() != null) {
@@ -75,10 +78,12 @@ public class CartActivity extends AppCompatActivity implements CartAdapter.OnCar
             currentCartList = items;
             cartAdapter.setCartItems(items);
             if (items == null || items.isEmpty()) {
-                tvEmptyCart.setVisibility(View.VISIBLE);
+                if (layoutEmptyCart != null) layoutEmptyCart.setVisibility(View.VISIBLE);
+                else if (tvEmptyCart != null) tvEmptyCart.setVisibility(View.VISIBLE);
                 btnCheckout.setEnabled(false);
             } else {
-                tvEmptyCart.setVisibility(View.GONE);
+                if (layoutEmptyCart != null) layoutEmptyCart.setVisibility(View.GONE);
+                else if (tvEmptyCart != null) tvEmptyCart.setVisibility(View.GONE);
                 btnCheckout.setEnabled(true);
             }
         });
@@ -95,12 +100,16 @@ public class CartActivity extends AppCompatActivity implements CartAdapter.OnCar
             Toast.makeText(this, "Cart cleared", Toast.LENGTH_SHORT).show();
         });
 
+        if (btnStartShopping != null) {
+            btnStartShopping.setOnClickListener(v -> finish());
+        }
+
         btnCheckout.setOnClickListener(v -> {
             if (currentCartList == null || currentCartList.isEmpty()) {
                 Toast.makeText(this, "Your cart is empty!", Toast.LENGTH_SHORT).show();
                 return;
             }
-            startActivity(new Intent(CartActivity.class.cast(this), CheckoutActivity.class));
+            startActivity(new Intent(CartActivity.this, CheckoutActivity.class));
         });
     }
 
